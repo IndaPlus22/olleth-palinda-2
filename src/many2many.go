@@ -11,6 +11,29 @@ import (
 	"time"
 )
 
+// func main() {
+// 	// Use different random numbers each time this program is executed.
+// 	rand.Seed(time.Now().Unix())
+
+// 	const strings = 32
+// 	const producers = 4
+// 	const consumers = 2
+
+// 	before := time.Now()
+// 	ch := make(chan string)
+// 	wgp := new(sync.WaitGroup)
+// 	wgp.Add(producers)
+// 	for i := 0; i < producers; i++ {
+// 		go Produce("p"+strconv.Itoa(i), strings/producers, ch, wgp)
+// 	}
+// 	for i := 0; i < consumers; i++ {
+// 		go Consume("c"+strconv.Itoa(i), ch)
+// 	}
+// 	wgp.Wait() // Wait for all producers to finish.
+// 	close(ch)
+// 	fmt.Println("time:", time.Now().Sub(before))
+// }
+
 func main() {
 	// Use different random numbers each time this program is executed.
 	rand.Seed(time.Now().Unix())
@@ -22,15 +45,18 @@ func main() {
 	before := time.Now()
 	ch := make(chan string)
 	wgp := new(sync.WaitGroup)
+	wgc := new(sync.WaitGroup)
 	wgp.Add(producers)
 	for i := 0; i < producers; i++ {
 		go Produce("p"+strconv.Itoa(i), strings/producers, ch, wgp)
 	}
 	for i := 0; i < consumers; i++ {
-		go Consume("c"+strconv.Itoa(i), ch)
+		wgc.Add(1)
+		go Consume("c"+strconv.Itoa(i), ch, wgc)
 	}
 	wgp.Wait() // Wait for all producers to finish.
 	close(ch)
+	wgc.Wait() // Wait for all consumers to finish.
 	fmt.Println("time:", time.Now().Sub(before))
 }
 
@@ -43,12 +69,21 @@ func Produce(id string, n int, ch chan<- string, wg *sync.WaitGroup) {
 	wg.Done()
 }
 
+// // Consume prints strings received from the channel until the channel is closed.
+// func Consume(id string, ch <-chan string) {
+// 	for s := range ch {
+// 		fmt.Println(id, "received", s)
+// 		RandomSleep(100) // Simulate time to consume data.
+// 	}
+// }
+
 // Consume prints strings received from the channel until the channel is closed.
-func Consume(id string, ch <-chan string) {
+func Consume(id string, ch <-chan string, wg *sync.WaitGroup) {
 	for s := range ch {
 		fmt.Println(id, "received", s)
 		RandomSleep(100) // Simulate time to consume data.
 	}
+	wg.Done()
 }
 
 // RandomSleep waits for x ms, where x is a random number, 0 < x < n,
@@ -58,8 +93,3 @@ func RandomSleep(n int) {
 }
 
 // What happens if you switch the order of the statements wgp.Wait() and close(ch) in the end of the main function?
-
-// What happens if you move the close(ch) from the main function and instead close the channel in the end of the function Produce?
-// What happens if you remove the statement close(ch) completely?
-// What happens if you increase the number of consumers from 2 to 4?
-// Can you be sure that all strings are printed before the program stops?
